@@ -1,0 +1,150 @@
+{
+  "design_system": {
+    "brand_identity": {
+      "name": "BESTIC FASHION",
+      "established": 2016,
+      "tone": "Luxury, Minimal, Feminine, Confident",
+      "archetype": "The Lover / The Ruler",
+      "key_visuals": "High-fashion photography, soft skin tones, silk textures, ample whitespace"
+    },
+    "typography": {
+      "font_family": {
+        "heading": "Playfair Display, serif",
+        "body": "Mulish, sans-serif",
+        "accent": "Cormorant Garamond, serif"
+      },
+      "scale": {
+        "h1": "text-5xl md:text-7xl font-medium tracking-tight leading-tight",
+        "h2": "text-3xl md:text-5xl font-normal tracking-tight",
+        "h3": "text-2xl md:text-3xl font-medium",
+        "body_lg": "text-lg md:text-xl font-light leading-relaxed",
+        "body_base": "text-base font-light leading-relaxed",
+        "caption": "text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground",
+        "button": "text-sm font-medium tracking-[0.1em] uppercase"
+      }
+    },
+    "colors": {
+      "theme": "light",
+      "palette": {
+        "primary": {
+          "DEFAULT": "#1A1A1A",
+          "foreground": "#FFFFFF",
+          "description": "Soft Black for text and primary actions"
+        },
+        "secondary": {
+          "DEFAULT": "#F9F5F1",
+          "foreground": "#1A1A1A",
+          "description": "Very pale nude/beige for backgrounds"
+        },
+        "accent": {
+          "DEFAULT": "#D4AF37",
+          "foreground": "#FFFFFF",
+          "description": "Muted Gold for Platinum Seller highlights"
+        },
+        "muted": {
+          "DEFAULT": "#F4E1D2",
+          "foreground": "#594A42",
+          "description": "Dusty Pink/Nude for subtle highlights"
+        },
+        "background": "#FFFFFF",
+        "surface": "#FAFAFA"
+      },
+      "gradients": {
+        "hero_overlay": "linear-gradient(to top, rgba(0,0,0,0.4), transparent)",
+        "soft_glow": "radial-gradient(circle, rgba(244,225,210,0.4) 0%, rgba(255,255,255,0) 70%)"
+      }
+    },
+    "layout": {
+      "grid_system": "Use 'The Bento Grid' Mode A for categories. Use generous padding (p-8 to p-24).",
+      "container": "max-w-7xl mx-auto px-6 md:px-12",
+      "spacing": {
+        "section_gap": "py-24 md:py-32",
+        "element_gap": "gap-6 md:gap-12"
+      }
+    },
+    "components": {
+      "buttons": {
+        "primary": "bg-primary text-primary-foreground hover:bg-primary/90 rounded-none px-8 py-4 uppercase tracking-widest text-xs transition-all duration-300",
+        "secondary": "border border-primary text-primary bg-transparent hover:bg-primary hover:text-white rounded-none px-8 py-4 uppercase tracking-widest text-xs transition-all duration-300",
+        "ghost": "text-primary hover:text-primary/70 underline-offset-4 hover:underline uppercase tracking-widest text-xs"
+      },
+      "cards": {
+        "product": "group relative overflow-hidden bg-transparent",
+        "category": "relative overflow-hidden aspect-[3/4] group cursor-pointer"
+      },
+      "inputs": {
+        "style": "border-b border-primary/20 bg-transparent px-0 py-4 focus:border-primary focus:ring-0 rounded-none placeholder:text-muted-foreground/50 font-light"
+      }
+    },
+    "motion": {
+      "principles": "Slow, fluid, elegant. Avoid bouncy springs.",
+      "transitions": {
+        "default": "transition-all duration-500 ease-out",
+        "slow": "transition-all duration-1000 ease-in-out"
+      },
+      "animations": {
+        "fade_in_up": {
+          "initial": { "opacity": 0, "y": 20 },
+          "animate": { "opacity": 1, "y": 0 },
+          "transition": { "duration": 0.8, "ease": "easeOut" }
+        },
+        "image_reveal": {
+          "initial": { "scale": 1.1, "opacity": 0.8 },
+          "whileHover": { "scale": 1.05, "opacity": 1 },
+          "transition": { "duration": 0.8 }
+        }
+      }
+    },
+    "assets": {
+      "image_urls": {
+        "hero": {
+          "main": "https://images.unsplash.com/photo-1762195018084-44beb294ce2f?q=80&w=2000&auto=format&fit=crop",
+          "alt": "Woman in white lace lingerie, luxury studio lighting",
+          "category": "hero"
+        },
+        "categories": {
+          "western_wear": "https://images.unsplash.com/photo-1663159934337-b23216476684?q=80&w=800&auto=format&fit=crop",
+          "lingerie": "https://images.unsplash.com/photo-1762843353007-e198859f36b6?q=80&w=800&auto=format&fit=crop",
+          "shapewear": "https://images.pexels.com/photos/32304292/pexels-photo-32304292.jpeg?auto=compress&cs=tinysrgb&w=800",
+          "texture": "https://images.unsplash.com/photo-1624879944018-118694cdfdc6?q=80&w=800&auto=format&fit=crop"
+        },
+        "products": [
+          "https://images.unsplash.com/photo-1763692108454-6cfa2b0af5c1?q=80&w=800&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1657163913996-1f699d732c14?q=80&w=800&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1729808785118-bbfd41d0149c?q=80&w=800&auto=format&fit=crop"
+        ],
+        "logos": {
+          "note": "Use text badges or simple icons for 'Flipkart', 'Myntra', 'Amazon', 'Ajio' as specific logos were unavailable."
+        }
+      },
+      "icons": {
+        "library": "lucide-react",
+        "style": "stroke-width: 1px; size: 20px;"
+      }
+    }
+  },
+  "implementation_plan": {
+    "phase_1_setup": [
+      "Install dependencies: `yarn add lucide-react framer-motion clsx tailwind-merge`",
+      "Update tailwind.config.js with new colors and font families.",
+      "Add Google Fonts import in index.css (Playfair Display, Mulish)."
+    ],
+    "phase_2_components": [
+      "Create reusable UI components in `src/components/ui` (Button, Card, Section).",
+      "Implement the 'Bento Grid' for the Categories section.",
+      "Build the Navbar with transparent-to-solid scroll effect."
+    ],
+    "phase_3_pages": [
+      "Develop Homepage with Hero, Categories, Bestsellers, Trust, Footer.",
+      "Develop Product Page with Image Gallery, Size Selector, Add to Cart.",
+      "Develop Cart/Checkout flow."
+    ],
+    "universal_guidelines": [
+      "Use `data-testid` on all interactive elements.",
+      "Ensure all images have `alt` tags for accessibility.",
+      "Do NOT use gradients for text or buttons, stick to solid luxury colors.",
+      "Use `backdrop-blur-md` for floating elements like the Navbar.",
+      "Avoid 'Inter' font. Use 'Mulish' for body and 'Playfair Display' for headings."
+    ]
+  }
+}
