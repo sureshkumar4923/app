@@ -153,7 +153,7 @@ const HomePage = ({ brandInfo, categories, products, addToCart, submitNewsletter
             <div className="flex flex-wrap items-center gap-4">
               <Link to="/shop?tag=best-sellers" data-testid="hero-shop-bestsellers-link">
                 <Button className="rounded-none bg-white px-8 py-6 text-xs uppercase tracking-[0.2em] text-stone-900 hover:bg-stone-100">
-                  Shop Best Sellers
+                  Shop Best Sellersss
                 </Button>
               </Link>
               <Link to="/shop?tag=new-arrivals" data-testid="hero-new-arrivals-link">
