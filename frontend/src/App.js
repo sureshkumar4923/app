@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "@/App.css";
 import axios from "axios";
 import { ArrowRight, CheckCircle2, Menu, ShieldCheck, ShoppingBag, Star, X } from "lucide-react";
-import { BrowserRouter, Link, Route, Routes, useParams, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Link, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import SellerPortal from "@/components/SellerPortal";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -78,6 +79,9 @@ const SiteHeader = ({ cartCount, menuOpen, setMenuOpen }) => (
         <a href="/#contact" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-contact-link">
           Contact
         </a>
+        <Link to="/seller" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-seller-link">
+          Seller Portal
+        </Link>
       </nav>
 
       <div className="flex items-center gap-3">
@@ -112,6 +116,9 @@ const SiteHeader = ({ cartCount, menuOpen, setMenuOpen }) => (
           <a href="/#contact" onClick={() => setMenuOpen(false)} data-testid="mobile-nav-contact-link">
             Contact
           </a>
+          <Link to="/seller" onClick={() => setMenuOpen(false)} data-testid="mobile-nav-seller-link">
+            Seller Portal
+          </Link>
         </div>
       </div>
     )}
@@ -703,6 +710,49 @@ const CartPanel = ({ cartItems, setCartItems }) => {
   );
 };
 
+const AppContent = ({
+  brandInfo,
+  categories,
+  products,
+  addToCart,
+  submitNewsletter,
+  newsletterState,
+  cartItems,
+  setCartItems,
+  menuOpen,
+  setMenuOpen,
+  loadCatalog,
+}) => {
+  const location = useLocation();
+  const isSellerRoute = location.pathname.startsWith("/seller");
+
+  return (
+    <div className="app-shell min-h-screen bg-[#fdfcfb]" data-testid="app-shell">
+      <SiteHeader cartCount={cartItems.length} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <HomePage
+              brandInfo={brandInfo}
+              categories={categories}
+              products={products}
+              addToCart={addToCart}
+              submitNewsletter={submitNewsletter}
+              newsletterState={newsletterState}
+            />
+          }
+        />
+        <Route path="/shop" element={<ShopPage products={products} categories={categories} addToCart={addToCart} />} />
+        <Route path="/product/:slug" element={<ProductPage addToCart={addToCart} />} />
+        <Route path="/seller" element={<SellerPortal onCatalogRefresh={loadCatalog} />} />
+      </Routes>
+      {!isSellerRoute && <Footer brandInfo={brandInfo} />}
+      {!isSellerRoute && <CartPanel cartItems={cartItems} setCartItems={setCartItems} />}
+    </div>
+  );
+};
+
 function App() {
   const [brandInfo, setBrandInfo] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -722,25 +772,25 @@ function App() {
     document.title = "BESTIC FASHION | Premium Women Lingerie & Western Fashion";
   }, []);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [brandResponse, categoryResponse, productResponse] = await Promise.all([
-          axios.get(`${API}/brand-info`),
-          axios.get(`${API}/categories`),
-          axios.get(`${API}/products`),
-        ]);
+  const loadCatalog = useCallback(async () => {
+    try {
+      const [brandResponse, categoryResponse, productResponse] = await Promise.all([
+        axios.get(`${API}/brand-info`),
+        axios.get(`${API}/categories`),
+        axios.get(`${API}/products`),
+      ]);
 
-        setBrandInfo(brandResponse.data);
-        setCategories(categoryResponse.data);
-        setProducts(productResponse.data.items || []);
-      } catch (error) {
-        console.error("Unable to load BESTIC data", error);
-      }
-    };
-
-    loadData();
+      setBrandInfo(brandResponse.data);
+      setCategories(categoryResponse.data);
+      setProducts(productResponse.data.items || []);
+    } catch (error) {
+      console.error("Unable to load BESTIC data", error);
+    }
   }, []);
+
+  useEffect(() => {
+    loadCatalog();
+  }, [loadCatalog]);
 
   const addToCart = (product, options) => {
     const { size, color } = options;
@@ -769,15 +819,35 @@ function App() {
 
   const submitNewsletter = async (event) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const email = formData.get("email");
+    const formElement = event.currentTarget;
+    const formData = new FormData(formElement);
+    const emailEntry = formData.get("email");
+    const email = typeof emailEntry === "string" ? emailEntry.trim() : "";
+
+    if (!email) {
+      setNewsletterState({ message: "Please enter a valid email address." });
+      return;
+    }
 
     try {
-      const response = await axios.post(`${API}/leads/newsletter`, { email });
-      setNewsletterState({ message: response.data.message });
-      event.currentTarget.reset();
+      const response = await fetch(`${API}/leads/newsletter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const responseBody = await response.json();
+      if (!response.ok) {
+        throw new Error(responseBody?.detail || "Unable to subscribe right now. Please try again.");
+      }
+
+      const message = responseBody?.message || "Subscription confirmed.";
+      setNewsletterState({ message });
+      formElement.reset();
     } catch (error) {
-      setNewsletterState({ message: "Unable to subscribe right now. Please try again." });
+      setNewsletterState({
+        message: typeof error?.message === "string" ? error.message : "Unable to subscribe right now. Please try again.",
+      });
     }
   };
 
@@ -791,28 +861,19 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="app-shell min-h-screen bg-[#fdfcfb]" data-testid="app-shell">
-        <SiteHeader cartCount={cartItems.length} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <HomePage
-                brandInfo={brandInfo}
-                categories={categories}
-                products={products}
-                addToCart={addToCart}
-                submitNewsletter={submitNewsletter}
-                newsletterState={newsletterState}
-              />
-            }
-          />
-          <Route path="/shop" element={<ShopPage products={products} categories={categories} addToCart={addToCart} />} />
-          <Route path="/product/:slug" element={<ProductPage addToCart={addToCart} />} />
-        </Routes>
-        <Footer brandInfo={brandInfo} />
-        <CartPanel cartItems={cartItems} setCartItems={setCartItems} />
-      </div>
+      <AppContent
+        brandInfo={brandInfo}
+        categories={categories}
+        products={products}
+        addToCart={addToCart}
+        submitNewsletter={submitNewsletter}
+        newsletterState={newsletterState}
+        cartItems={cartItems}
+        setCartItems={setCartItems}
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+        loadCatalog={loadCatalog}
+      />
     </BrowserRouter>
   );
 }

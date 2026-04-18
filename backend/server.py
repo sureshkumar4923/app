@@ -1,12 +1,15 @@
 import logging
 import os
+import re
 import uuid
+from io import StringIO
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, HTTPException, Query
+from fastapi.responses import Response
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
@@ -25,6 +28,14 @@ api_router = APIRouter(prefix="/api")
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def slugify(value: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "-", value.lower().strip()).strip("-")
+    return normalized or f"product-{uuid.uuid4().hex[:6]}"
+
+
+ORDER_STATUS_FLOW = ["New", "Processing", "Shipped", "Delivered", "Returned"]
 
 
 class StatusCheck(BaseModel):
@@ -73,6 +84,8 @@ class Product(BaseModel):
     colors: List[str]
     is_new: bool
     is_bestseller: bool
+    stock: int
+    sku: str
     rating: float
     review_count: int
     reviews: List[ProductReview]
@@ -132,6 +145,78 @@ class CartPreviewResponse(BaseModel):
     shipping: float
     total: float
     currency: str
+
+
+class SellerProductCreate(BaseModel):
+    name: str
+    description: str
+    category_slug: str
+    price: float = Field(gt=0)
+    mrp: float = Field(gt=0)
+    image_urls: List[str]
+    sizes: List[str]
+    colors: List[str]
+    stock: int = Field(default=20, ge=0)
+    is_new: bool = True
+    is_bestseller: bool = False
+
+
+class InventoryUpdate(BaseModel):
+    stock: int = Field(ge=0)
+    price: Optional[float] = Field(default=None, gt=0)
+    mrp: Optional[float] = Field(default=None, gt=0)
+
+
+class SellerOrderItem(BaseModel):
+    slug: str
+    name: str
+    size: str
+    color: str
+    quantity: int
+    unit_price: float
+    line_total: float
+
+
+class SellerOrder(BaseModel):
+    id: str
+    order_number: str
+    customer_name: str
+    customer_phone: str
+    marketplace: str
+    payment_method: str
+    payment_status: str
+    order_status: str
+    total_amount: float
+    created_at: str
+    items: List[SellerOrderItem]
+
+
+class SellerOrderStatusUpdate(BaseModel):
+    order_status: str
+
+
+class SellerDashboardResponse(BaseModel):
+    total_orders: int
+    new_orders: int
+    processing_orders: int
+    low_stock_items: int
+    total_revenue: float
+    pending_payments: float
+
+
+class PaymentMethodBreakdown(BaseModel):
+    payment_method: str
+    amount: float
+    orders: int
+
+
+class PaymentReportResponse(BaseModel):
+    total_orders: int
+    total_revenue: float
+    paid_amount: float
+    pending_amount: float
+    cod_amount: float
+    method_breakdown: List[PaymentMethodBreakdown]
 
 
 SEED_CATEGORIES = [
@@ -203,6 +288,8 @@ SEED_PRODUCTS = [
         "colors": ["Rose Nude", "Ivory", "Soft Black"],
         "is_new": True,
         "is_bestseller": True,
+        "stock": 34,
+        "sku": "BST-RLLS-001",
         "rating": 4.8,
         "review_count": 186,
         "reviews": [
@@ -226,6 +313,8 @@ SEED_PRODUCTS = [
         "colors": ["Beige", "Nude Pink", "Black"],
         "is_new": False,
         "is_bestseller": True,
+        "stock": 46,
+        "sku": "BST-PEB-002",
         "rating": 4.7,
         "review_count": 241,
         "reviews": [
@@ -249,6 +338,8 @@ SEED_PRODUCTS = [
         "colors": ["Powder Nude", "Chocolate", "Black"],
         "is_new": False,
         "is_bestseller": False,
+        "stock": 58,
+        "sku": "BST-SHP-003",
         "rating": 4.6,
         "review_count": 138,
         "reviews": [
@@ -272,6 +363,8 @@ SEED_PRODUCTS = [
         "colors": ["Sand", "Mocha", "Black"],
         "is_new": True,
         "is_bestseller": True,
+        "stock": 27,
+        "sku": "BST-SHWS-004",
         "rating": 4.9,
         "review_count": 205,
         "reviews": [
@@ -295,11 +388,38 @@ SEED_PRODUCTS = [
         "colors": ["Champagne", "Dusty Rose", "Black"],
         "is_new": True,
         "is_bestseller": False,
+        "stock": 19,
+        "sku": "BST-SWWD-005",
         "rating": 4.7,
         "review_count": 93,
         "reviews": [
             {"name": "Kriti", "rating": 5, "comment": "Looks absolutely luxe.", "verified": True},
             {"name": "Neha", "rating": 4, "comment": "Great fall and quality.", "verified": True},
+        ],
+    },
+    {
+        "id": str(uuid.uuid4()),
+        "slug": "bestic-elegance",
+        "name": "Bestic Elegance Signature Set",
+        "description": "Signature premium lingerie set crafted for elevated everyday elegance and comfort.",
+        "category_slug": "lingerie-sets",
+        "price": 1599,
+        "mrp": 2199,
+        "image_urls": [
+            "https://images.unsplash.com/photo-1762195018084-44beb294ce2f?q=80&w=1200&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1762843353007-e198859f36b6?q=80&w=1200&auto=format&fit=crop",
+        ],
+        "sizes": ["S", "M", "L", "XL"],
+        "colors": ["Nude Blush", "Ivory", "Black"],
+        "is_new": True,
+        "is_bestseller": True,
+        "stock": 24,
+        "sku": "BST-ELEG-007",
+        "rating": 4.9,
+        "review_count": 117,
+        "reviews": [
+            {"name": "Aditi", "rating": 5, "comment": "Looks and feels premium.", "verified": True},
+            {"name": "Kashvi", "rating": 5, "comment": "Excellent fit and finish.", "verified": True},
         ],
     },
     {
@@ -318,6 +438,8 @@ SEED_PRODUCTS = [
         "colors": ["Ivory", "Nude", "Black"],
         "is_new": False,
         "is_bestseller": True,
+        "stock": 39,
+        "sku": "BST-CCB-006",
         "rating": 4.5,
         "review_count": 158,
         "reviews": [
@@ -350,20 +472,130 @@ BRAND_INFO = {
 }
 
 
-async def seed_catalog_if_needed() -> None:
-    categories_count = await db.categories.count_documents({})
-    if categories_count == 0:
-        await db.categories.insert_many([dict(item) for item in SEED_CATEGORIES])
+def build_seed_orders(products: Dict[str, dict]) -> List[dict]:
+    order_templates = [
+        {
+            "order_number": "BST-1001",
+            "customer_name": "Ananya Sharma",
+            "customer_phone": "+91-9890001234",
+            "marketplace": "Website",
+            "payment_method": "UPI",
+            "payment_status": "Paid",
+            "order_status": "New",
+            "items": [{"slug": "rose-lace-lingerie-set", "size": "M", "color": "Rose Nude", "quantity": 1}],
+        },
+        {
+            "order_number": "BST-1002",
+            "customer_name": "Ritika Verma",
+            "customer_phone": "+91-9876001234",
+            "marketplace": "Amazon",
+            "payment_method": "COD",
+            "payment_status": "COD",
+            "order_status": "Processing",
+            "items": [{"slug": "bestic-elegance", "size": "L", "color": "Nude Blush", "quantity": 1}],
+        },
+        {
+            "order_number": "BST-1003",
+            "customer_name": "Sneha Kapoor",
+            "customer_phone": "+91-9811002200",
+            "marketplace": "Flipkart",
+            "payment_method": "Card",
+            "payment_status": "Pending",
+            "order_status": "Shipped",
+            "items": [
+                {"slug": "cotton-comfort-bralette", "size": "M", "color": "Nude", "quantity": 2},
+                {"slug": "seamless-hipster-pack", "size": "M", "color": "Chocolate", "quantity": 1},
+            ],
+        },
+    ]
 
-    products_count = await db.products.count_documents({})
-    if products_count == 0:
-        seeded_products = []
-        created_at = now_iso()
-        for product in SEED_PRODUCTS:
-            item = dict(product)
-            item["created_at"] = created_at
-            seeded_products.append(item)
-        await db.products.insert_many(seeded_products)
+    seed_orders = []
+    for template in order_templates:
+        line_items = []
+        total = 0.0
+        for item in template["items"]:
+            product = products.get(item["slug"])
+            if not product:
+                continue
+
+            unit_price = float(product.get("price", 0))
+            line_total = round(unit_price * item["quantity"], 2)
+            total += line_total
+            line_items.append(
+                {
+                    "slug": product["slug"],
+                    "name": product["name"],
+                    "size": item["size"],
+                    "color": item["color"],
+                    "quantity": item["quantity"],
+                    "unit_price": unit_price,
+                    "line_total": line_total,
+                }
+            )
+
+        if not line_items:
+            continue
+
+        seed_orders.append(
+            {
+                "id": str(uuid.uuid4()),
+                "order_number": template["order_number"],
+                "customer_name": template["customer_name"],
+                "customer_phone": template["customer_phone"],
+                "marketplace": template["marketplace"],
+                "payment_method": template["payment_method"],
+                "payment_status": template["payment_status"],
+                "order_status": template["order_status"],
+                "total_amount": round(total, 2),
+                "created_at": now_iso(),
+                "updated_at": now_iso(),
+                "items": line_items,
+            }
+        )
+
+    return seed_orders
+
+
+async def seed_catalog_if_needed() -> None:
+    existing_categories = set(await db.categories.distinct("slug"))
+    missing_categories = [item for item in SEED_CATEGORIES if item["slug"] not in existing_categories]
+    if missing_categories:
+        await db.categories.insert_many([dict(item) for item in missing_categories])
+
+    existing_products = set(await db.products.distinct("slug"))
+    created_at = now_iso()
+    missing_products = []
+    for product in SEED_PRODUCTS:
+        if product["slug"] in existing_products:
+            continue
+        item = dict(product)
+        item["created_at"] = created_at
+        item["updated_at"] = created_at
+        missing_products.append(item)
+
+    if missing_products:
+        await db.products.insert_many(missing_products)
+
+    product_defaults = await db.products.find({}, {"_id": 0, "slug": 1, "stock": 1, "sku": 1, "created_at": 1}).to_list(1000)
+    for product in product_defaults:
+        updates = {}
+        if product.get("stock") is None:
+            updates["stock"] = 20
+        if not product.get("sku"):
+            updates["sku"] = f"BST-{product['slug'].replace('-', '').upper()[:10]}"
+        if not product.get("created_at"):
+            updates["created_at"] = now_iso()
+        if updates:
+            updates["updated_at"] = now_iso()
+            await db.products.update_one({"slug": product["slug"]}, {"$set": updates})
+
+    orders_count = await db.orders.count_documents({})
+    if orders_count == 0:
+        products_for_orders = await db.products.find({}, {"_id": 0}).to_list(1000)
+        products_by_slug = {item["slug"]: item for item in products_for_orders}
+        seed_orders = build_seed_orders(products_by_slug)
+        if seed_orders:
+            await db.orders.insert_many(seed_orders)
 
 
 @api_router.get("/")
@@ -505,6 +737,186 @@ async def preview_cart(input_data: CartPreviewCreate):
         shipping=shipping,
         total=total,
         currency="INR",
+    )
+
+
+@api_router.get("/seller/dashboard", response_model=SellerDashboardResponse)
+async def get_seller_dashboard():
+    orders = await db.orders.find({}, {"_id": 0}).to_list(1000)
+    low_stock_items = await db.products.count_documents({"stock": {"$lte": 10}})
+
+    total_revenue = sum(float(order.get("total_amount", 0)) for order in orders if order.get("payment_status") == "Paid")
+    pending_payments = sum(
+        float(order.get("total_amount", 0))
+        for order in orders
+        if order.get("payment_status") in {"Pending", "COD"}
+    )
+
+    return SellerDashboardResponse(
+        total_orders=len(orders),
+        new_orders=sum(1 for order in orders if order.get("order_status") == "New"),
+        processing_orders=sum(1 for order in orders if order.get("order_status") == "Processing"),
+        low_stock_items=low_stock_items,
+        total_revenue=round(total_revenue, 2),
+        pending_payments=round(pending_payments, 2),
+    )
+
+
+@api_router.get("/seller/orders", response_model=List[SellerOrder])
+async def get_seller_orders(
+    status: Optional[str] = Query(default=None),
+    payment_status: Optional[str] = Query(default=None),
+):
+    query = {}
+    if status:
+        query["order_status"] = status
+    if payment_status:
+        query["payment_status"] = payment_status
+
+    orders = await db.orders.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return orders
+
+
+@api_router.patch("/seller/orders/{order_id}", response_model=SellerOrder)
+async def update_order_status(order_id: str, input_data: SellerOrderStatusUpdate):
+    if input_data.order_status not in ORDER_STATUS_FLOW:
+        raise HTTPException(status_code=400, detail=f"Invalid order status. Use one of: {', '.join(ORDER_STATUS_FLOW)}")
+
+    update_result = await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {"order_status": input_data.order_status, "updated_at": now_iso()}},
+    )
+    if update_result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    updated_order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    return updated_order
+
+
+@api_router.get("/seller/inventory", response_model=List[Product])
+async def get_inventory():
+    return await db.products.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+
+@api_router.patch("/seller/inventory/{slug}", response_model=Product)
+async def update_inventory(slug: str, input_data: InventoryUpdate):
+    updates = input_data.model_dump(exclude_none=True)
+    updates["updated_at"] = now_iso()
+    update_result = await db.products.update_one({"slug": slug}, {"$set": updates})
+
+    if update_result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    updated_product = await db.products.find_one({"slug": slug}, {"_id": 0})
+    return updated_product
+
+
+@api_router.get("/seller/products", response_model=List[Product])
+async def get_seller_products():
+    return await db.products.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+
+@api_router.post("/seller/products", response_model=Product)
+async def create_seller_product(input_data: SellerProductCreate):
+    product_data = input_data.model_dump()
+    base_slug = slugify(product_data["name"])
+    final_slug = base_slug
+
+    while await db.products.find_one({"slug": final_slug}, {"_id": 1}):
+        final_slug = f"{base_slug}-{uuid.uuid4().hex[:4]}"
+
+    now_timestamp = now_iso()
+    new_product = {
+        "id": str(uuid.uuid4()),
+        "slug": final_slug,
+        "name": product_data["name"],
+        "description": product_data["description"],
+        "category_slug": product_data["category_slug"],
+        "price": product_data["price"],
+        "mrp": product_data["mrp"],
+        "image_urls": product_data["image_urls"],
+        "sizes": product_data["sizes"],
+        "colors": product_data["colors"],
+        "is_new": product_data["is_new"],
+        "is_bestseller": product_data["is_bestseller"],
+        "stock": product_data["stock"],
+        "sku": f"BST-{final_slug.replace('-', '').upper()[:10]}",
+        "rating": 0,
+        "review_count": 0,
+        "reviews": [],
+        "created_at": now_timestamp,
+        "updated_at": now_timestamp,
+    }
+
+    await db.products.insert_one(new_product)
+    return new_product
+
+
+@api_router.get("/seller/payments/report", response_model=PaymentReportResponse)
+async def get_payment_report():
+    orders = await db.orders.find({}, {"_id": 0}).to_list(1000)
+
+    paid_amount = sum(float(order.get("total_amount", 0)) for order in orders if order.get("payment_status") == "Paid")
+    pending_amount = sum(
+        float(order.get("total_amount", 0)) for order in orders if order.get("payment_status") == "Pending"
+    )
+    cod_amount = sum(float(order.get("total_amount", 0)) for order in orders if order.get("payment_status") == "COD")
+
+    method_bucket: Dict[str, Dict[str, float]] = {}
+    for order in orders:
+        payment_method = order.get("payment_method", "Unknown")
+        amount = float(order.get("total_amount", 0))
+        if payment_method not in method_bucket:
+            method_bucket[payment_method] = {"amount": 0.0, "orders": 0}
+        method_bucket[payment_method]["amount"] += amount
+        method_bucket[payment_method]["orders"] += 1
+
+    method_breakdown = [
+        PaymentMethodBreakdown(
+            payment_method=key,
+            amount=round(value["amount"], 2),
+            orders=int(value["orders"]),
+        )
+        for key, value in method_bucket.items()
+    ]
+
+    return PaymentReportResponse(
+        total_orders=len(orders),
+        total_revenue=round(paid_amount, 2),
+        paid_amount=round(paid_amount, 2),
+        pending_amount=round(pending_amount, 2),
+        cod_amount=round(cod_amount, 2),
+        method_breakdown=method_breakdown,
+    )
+
+
+@api_router.get("/seller/orders/report")
+async def get_orders_report(format: str = Query(default="json")):
+    orders = await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+    if format.lower() != "csv":
+        return orders
+
+    csv_stream = StringIO()
+    csv_stream.write("order_number,customer_name,marketplace,order_status,payment_status,payment_method,total_amount,created_at\n")
+    for order in orders:
+        row = [
+            order.get("order_number", ""),
+            order.get("customer_name", ""),
+            order.get("marketplace", ""),
+            order.get("order_status", ""),
+            order.get("payment_status", ""),
+            order.get("payment_method", ""),
+            str(order.get("total_amount", 0)),
+            order.get("created_at", ""),
+        ]
+        escaped = [str(col).replace(",", " ") for col in row]
+        csv_stream.write(",".join(escaped) + "\n")
+
+    return Response(
+        content=csv_stream.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=bestic_orders_report.csv"},
     )
 
 
