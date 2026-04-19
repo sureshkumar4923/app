@@ -1,0 +1,82 @@
+INFO:     Started server process [95196]
+INFO:     Waiting for application startup.
+2026-04-19 14:43:06,344 - server - ERROR - MongoDB unavailable during startup. Falling back to in-memory database for local development.
+Traceback (most recent call last):
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\server.py", line 1752, in startup_event
+    await seed_catalog_if_needed()
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\server.py", line 1143, in seed_catalog_if_needed
+    existing_categories = set(await db.categories.distinct("slug"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HP\AppData\Local\Programs\Python\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Users\HP\AppData\Local\Programs\Python\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\collection.py", line 3216, in distinct
+    return self._retryable_non_cursor_read(_cmd, session, operation=_Op.DISTINCT)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\collection.py", line 2177, in _retryable_non_cursor_read
+    return client._retryable_read(func, self._read_preference_for(s), s, operation)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2048, in _retryable_read
+    return self._retry_internal(
+           ~~~~~~~~~~~~~~~~~~~~^
+        func,
+        ^^^^^
+    ...<7 lines>...
+        operation_id=operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\_csot.py", line 124, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2014, in _retry_internal
+    ).run()
+      ~~~^^
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2763, in run
+    return self._read() if self._is_read else self._write()
+           ~~~~~~~~~~^^
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2908, in _read
+    self._server = self._get_server()
+                   ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2856, in _get_server
+    return self._client._select_server(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._server_selector,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        operation_id=self._operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1833, in _select_server
+    server = topology.select_server(
+        server_selector,
+    ...<2 lines>...
+        operation_id=operation_id,
+    )
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\topology.py", line 428, in select_server
+    server = self._select_server(
+        selector,
+    ...<4 lines>...
+        operation_id=operation_id,
+    )
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\topology.py", line 402, in _select_server
+    servers = self.select_servers(
+        selector,
+    ...<4 lines>...
+        deprioritized_servers,
+    )
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\topology.py", line 298, in select_servers
+    server_descriptions = self._select_servers_loop(
+        selector,
+    ...<4 lines>...
+        deprioritized_servers=deprioritized_servers,
+    )
+  File "C:\Users\HP\Desktop\Bestic Fashion\app\backend\.venv\Lib\site-packages\pymongo\synchronous\topology.py", line 359, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+        f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
+    )
+pymongo.errors.ServerSelectionTimeoutError: No replica set members found yet, Timeout: 9.646963299979689s, Topology Description: <TopologyDescription id: 69e49c97ea3771c6e306fa91, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('customer-apps-shard-00-00.eygwfp.mongodb.net', 27017) server_type: Unknown, rtt: None>, <ServerDescription ('customer-apps-shard-00-01.eygwfp.mongodb.net', 27017) server_type: Unknown, rtt: None>, <ServerDescription ('customer-apps-shard-00-02.eygwfp.mongodb.net', 27017) server_type: Unknown, rtt: None>]>
+2026-04-19 14:43:06,351 - server - INFO - BESTIC FASHION catalog seeded using in-memory database fallback
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)

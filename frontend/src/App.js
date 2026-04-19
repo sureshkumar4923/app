@@ -6,9 +6,11 @@ import { BrowserRouter, Link, Route, Routes, useLocation, useParams, useSearchPa
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import SellerPortal from "@/components/SellerPortal";
+import CustomerCheckoutModal from "@/components/CustomerCheckoutModal";
+import SellerAuthPortal from "@/components/SellerAuthPortal";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const CUSTOMER_SESSION_STORAGE_KEY = "bestic_customer_session";
 
 const formatPrice = (value) =>
   new Intl.NumberFormat("en-IN", {
@@ -17,91 +19,114 @@ const formatPrice = (value) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-const ProductCard = ({ product, addToCart }) => (
+const ProductCard = ({ product, addToCart, openCheckout }) => (
   <Card className="product-card overflow-hidden border-stone-200 bg-white shadow-sm" data-testid={`product-card-${product.slug}`}>
-    <div className="aspect-[3/4] overflow-hidden bg-stone-100">
-      <img
-        src={product.image_urls[0]}
-        alt={product.name}
-        className="product-image h-full w-full object-cover object-center"
-        data-testid={`product-image-${product.slug}`}
-      />
-    </div>
-    <CardContent className="space-y-4 p-5">
-      <div className="space-y-1">
-        <p className="text-xs uppercase tracking-[0.2em] text-stone-500" data-testid={`product-category-${product.slug}`}>
-          {product.category_slug.replace("-", " ")}
-        </p>
-        <h3 className="font-heading text-xl text-stone-900" data-testid={`product-name-${product.slug}`}>
-          {product.name}
-        </h3>
-        <div className="flex items-center gap-3" data-testid={`product-pricing-${product.slug}`}>
-          <p className="font-semibold text-stone-900">{formatPrice(product.price)}</p>
-          <p className="text-sm text-stone-400 line-through">{formatPrice(product.mrp)}</p>
+    <Link to={`/product/${product.slug}`} className="block">
+      <div className="aspect-[3/4] overflow-hidden bg-stone-100">
+        <img
+          src={product.image_urls[0]}
+          alt={product.name}
+          className="product-image h-full w-full object-cover object-center"
+          data-testid={`product-image-${product.slug}`}
+        />
+      </div>
+      <CardContent className="space-y-4 p-5">
+        <div className="space-y-1">
+          <p className="text-xs uppercase tracking-[0.2em] text-stone-500" data-testid={`product-category-${product.slug}`}>
+            {product.category_slug.replace("-", " ")}
+          </p>
+          <h3 className="font-heading text-xl text-stone-900" data-testid={`product-name-${product.slug}`}>
+            {product.name}
+          </h3>
+          <div className="flex items-center gap-3" data-testid={`product-pricing-${product.slug}`}>
+            <p className="font-semibold text-stone-900">{formatPrice(product.price)}</p>
+            <p className="text-sm text-stone-400 line-through">{formatPrice(product.mrp)}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Link>
+
+    <div className="px-5 pb-5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="rounded-none border-stone-900 text-xs uppercase tracking-[0.18em]"
+            onClick={() => openCheckout([{ slug: product.slug, name: product.name, size: product.sizes[0], color: product.colors[0], price: product.price, quantity: 1 }])}
+          >
+            Buy Now
+          </Button>
+          <Button
+            className="rounded-none bg-stone-900 text-xs uppercase tracking-[0.18em] hover:bg-stone-700"
+            onClick={() => addToCart(product, { size: product.sizes[0], color: product.colors[0] })}
+            data-testid={`product-add-to-cart-button-${product.slug}`}
+          >
+            Add to Cart
+          </Button>
         </div>
       </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <Link to={`/product/${product.slug}`} data-testid={`product-view-button-${product.slug}`}>
-          <Button variant="outline" className="rounded-none border-stone-900 text-xs uppercase tracking-[0.18em]">
-            View
-          </Button>
-        </Link>
-        <Button
-          className="rounded-none bg-stone-900 text-xs uppercase tracking-[0.18em] hover:bg-stone-700"
-          onClick={() => addToCart(product, { size: product.sizes[0], color: product.colors[0] })}
-          data-testid={`product-add-to-cart-button-${product.slug}`}
-        >
-          Add to Cart
-        </Button>
-      </div>
-    </CardContent>
+    </div>
   </Card>
 );
 
-const SiteHeader = ({ cartCount, menuOpen, setMenuOpen }) => (
+const SiteHeader = ({ cartCount, menuOpen, setMenuOpen, sellerWorkspaceMode, customerProfile }) => (
   <header className="sticky top-0 z-40 border-b border-stone-200/70 bg-white/85 backdrop-blur-md" data-testid="site-header">
     <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 md:px-12">
-      <Link to="/" className="font-heading text-2xl tracking-wide text-stone-900" data-testid="brand-logo-link">
+      <Link to={sellerWorkspaceMode ? "/seller" : "/"} className="font-heading text-2xl tracking-wide text-stone-900" data-testid="brand-logo-link">
         BESTIC FASHION
       </Link>
 
-      <nav className="hidden items-center gap-8 md:flex" data-testid="desktop-navigation">
-        <Link to="/" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-home-link">
-          Home
-        </Link>
-        <Link to="/shop" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-shop-link">
-          Shop
-        </Link>
-        <a href="/#about" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-about-link">
-          About
-        </a>
-        <a href="/#contact" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-contact-link">
-          Contact
-        </a>
-        <Link to="/seller" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-seller-link">
-          Seller Portal
-        </Link>
-      </nav>
+      {!sellerWorkspaceMode && (
+        <nav className="hidden items-center gap-8 md:flex" data-testid="desktop-navigation">
+          <Link to="/" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-home-link">
+            Home
+          </Link>
+          <Link to="/shop" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-shop-link">
+            Shop
+          </Link>
+          <a href="/#about" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-about-link">
+            About
+          </a>
+          <a href="/#contact" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-contact-link">
+            Contact
+          </a>
+          {customerProfile && (
+            <Link to="/account" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900">
+              My Account
+            </Link>
+          )}
+          <Link to="/seller" className="text-sm uppercase tracking-[0.18em] text-stone-700 transition-colors hover:text-stone-900" data-testid="nav-seller-link">
+            Seller Portal
+          </Link>
+        </nav>
+      )}
 
       <div className="flex items-center gap-3">
-        <div className="hidden items-center gap-2 rounded-full border border-stone-300 px-4 py-2 md:flex" data-testid="header-cart-summary">
-          <ShoppingBag className="h-4 w-4 text-stone-700" />
-          <span className="text-xs uppercase tracking-[0.14em] text-stone-700">Cart {cartCount}</span>
-        </div>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded-full border border-stone-300 p-2 md:hidden"
-          onClick={() => setMenuOpen((prev) => !prev)}
-          data-testid="mobile-menu-toggle-button"
-          aria-label="Toggle menu"
-        >
-          {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        {sellerWorkspaceMode ? (
+          <div className="rounded-full border border-stone-300 bg-stone-100 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-stone-700" data-testid="seller-workspace-badge">
+            Seller Workspace
+          </div>
+        ) : (
+          <>
+            <div className="hidden items-center gap-2 rounded-full border border-stone-300 px-4 py-2 md:flex" data-testid="header-cart-summary">
+              <ShoppingBag className="h-4 w-4 text-stone-700" />
+              <span className="text-xs uppercase tracking-[0.14em] text-stone-700">Cart {cartCount}</span>
+            </div>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-full border border-stone-300 p-2 md:hidden"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              data-testid="mobile-menu-toggle-button"
+              aria-label="Toggle menu"
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </>
+        )}
       </div>
     </div>
 
-    {menuOpen && (
+    {!sellerWorkspaceMode && menuOpen && (
       <div className="border-t border-stone-200 bg-white px-6 py-4 md:hidden" data-testid="mobile-navigation-panel">
         <div className="flex flex-col gap-4">
           <Link to="/" onClick={() => setMenuOpen(false)} data-testid="mobile-nav-home-link">
@@ -116,6 +141,11 @@ const SiteHeader = ({ cartCount, menuOpen, setMenuOpen }) => (
           <a href="/#contact" onClick={() => setMenuOpen(false)} data-testid="mobile-nav-contact-link">
             Contact
           </a>
+          {customerProfile && (
+            <Link to="/account" onClick={() => setMenuOpen(false)}>
+              My Account
+            </Link>
+          )}
           <Link to="/seller" onClick={() => setMenuOpen(false)} data-testid="mobile-nav-seller-link">
             Seller Portal
           </Link>
@@ -125,7 +155,7 @@ const SiteHeader = ({ cartCount, menuOpen, setMenuOpen }) => (
   </header>
 );
 
-const HomePage = ({ brandInfo, categories, products, addToCart, submitNewsletter, newsletterState }) => {
+const HomePage = ({ brandInfo, categories, products, addToCart, submitNewsletter, newsletterState, openCheckout }) => {
   const bestSellers = useMemo(() => products.filter((item) => item.is_bestseller).slice(0, 4), [products]);
 
   return (
@@ -229,7 +259,7 @@ const HomePage = ({ brandInfo, categories, products, addToCart, submitNewsletter
         </div>
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4" data-testid="bestsellers-grid">
           {bestSellers.map((product) => (
-            <ProductCard key={product.slug} product={product} addToCart={addToCart} />
+            <ProductCard key={product.slug} product={product} addToCart={addToCart} openCheckout={openCheckout} />
           ))}
         </div>
       </section>
@@ -310,7 +340,7 @@ const HomePage = ({ brandInfo, categories, products, addToCart, submitNewsletter
   );
 };
 
-const ShopPage = ({ products, categories, addToCart }) => {
+const ShopPage = ({ products, categories, addToCart, openCheckout }) => {
   const [searchParams] = useSearchParams();
   const categoryFromQuery = searchParams.get("category");
   const tagFromQuery = searchParams.get("tag");
@@ -369,7 +399,7 @@ const ShopPage = ({ products, categories, addToCart }) => {
 
       <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4" data-testid="shop-products-grid">
         {visibleProducts.map((product) => (
-          <ProductCard key={product.slug} product={product} addToCart={addToCart} />
+          <ProductCard key={product.slug} product={product} addToCart={addToCart} openCheckout={openCheckout} />
         ))}
       </div>
 
@@ -382,7 +412,7 @@ const ShopPage = ({ products, categories, addToCart }) => {
   );
 };
 
-const ProductPage = ({ addToCart }) => {
+const ProductPage = ({ addToCart, openCheckout }) => {
   const { slug } = useParams();
   const [product, setProduct] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -505,13 +535,22 @@ const ProductPage = ({ addToCart }) => {
           </div>
         </div>
 
-        <Button
-          className="h-12 w-full rounded-none bg-stone-900 text-xs uppercase tracking-[0.2em] hover:bg-stone-700"
-          onClick={() => addToCart(product, { size: selectedSize, color: selectedColor })}
-          data-testid="product-page-add-to-cart-button"
-        >
-          Add to Cart
-        </Button>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Button
+            className="h-12 w-full rounded-none bg-stone-900 text-xs uppercase tracking-[0.2em] hover:bg-stone-700"
+            onClick={() => addToCart(product, { size: selectedSize, color: selectedColor })}
+            data-testid="product-page-add-to-cart-button"
+          >
+            Add to Cart
+          </Button>
+          <Button
+            variant="outline"
+            className="h-12 w-full rounded-none border-stone-900 text-xs uppercase tracking-[0.2em]"
+            onClick={() => openCheckout([{ slug: product.slug, name: product.name, size: selectedSize, color: selectedColor, price: product.price, quantity: 1 }])}
+          >
+            Buy Now
+          </Button>
+        </div>
 
         <div className="space-y-3 border-t border-stone-200 pt-5" data-testid="product-reviews-section">
           <h2 className="font-heading text-2xl text-stone-900" data-testid="product-reviews-heading">
@@ -578,7 +617,69 @@ const Footer = ({ brandInfo }) => (
   </footer>
 );
 
-const CartPanel = ({ cartItems, setCartItems }) => {
+const CustomerAccountPage = ({ customerProfile, customerOrders }) => (
+  <main className="mx-auto w-full max-w-7xl px-6 py-12 md:px-12 md:py-16" data-testid="customer-account-page">
+    <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div>
+        <p className="text-xs uppercase tracking-[0.22em] text-stone-500">My Account</p>
+        <h1 className="font-heading text-4xl text-stone-900 md:text-5xl">Your Orders & Details</h1>
+      </div>
+      {customerProfile && (
+        <div className="border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+          {customerProfile.name} | {customerProfile.email}
+        </div>
+      )}
+    </div>
+
+    {customerProfile?.billing_address && (
+      <Card className="mb-6">
+        <CardContent className="p-5 text-sm text-stone-700">
+          <p className="font-medium text-stone-900">Saved Billing Address</p>
+          <p className="mt-2">{customerProfile.billing_address.full_name}</p>
+          <p>{customerProfile.billing_address.line1}</p>
+          {customerProfile.billing_address.line2 ? <p>{customerProfile.billing_address.line2}</p> : null}
+          <p>{customerProfile.billing_address.city}, {customerProfile.billing_address.state} - {customerProfile.billing_address.pincode}</p>
+          <p>{customerProfile.billing_address.phone}</p>
+        </CardContent>
+      </Card>
+    )}
+
+    <div className="space-y-4">
+      {customerOrders.map((order) => (
+        <Card key={order.id}>
+          <CardContent className="space-y-4 p-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="font-heading text-2xl text-stone-900">{order.order_number}</p>
+                <p className="text-sm text-stone-500">Placed on {new Date(order.created_at).toLocaleString("en-IN")}</p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.14em]">
+                <span className="border border-stone-300 px-3 py-2">{order.order_status}</span>
+                <span className="border border-stone-300 px-3 py-2">{order.payment_status}</span>
+                <span className="border border-stone-900 bg-stone-900 px-3 py-2 text-white">{formatPrice(order.total_amount)}</span>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {order.items.map((item, index) => (
+                <div key={`${order.id}-${index}`} className="border border-stone-200 p-4 text-sm">
+                  <p className="font-medium text-stone-900">{item.name}</p>
+                  <p className="mt-1 text-stone-500">{item.size} | {item.color}</p>
+                  <p className="mt-1 text-stone-500">Qty {item.quantity}</p>
+                  <p className="mt-2 font-medium text-stone-900">{formatPrice(item.line_total)}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+      {customerOrders.length === 0 && (
+        <p className="border border-stone-200 bg-white p-5 text-sm text-stone-600">No orders found yet.</p>
+      )}
+    </div>
+  </main>
+);
+
+const CartPanel = ({ cartItems, setCartItems, openCheckout }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const subtotal = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
@@ -705,6 +806,13 @@ const CartPanel = ({ cartItems, setCartItems }) => {
             <span className="text-stone-900">{formatPrice(total)}</span>
           </div>
         </div>
+        <Button
+          className="mt-4 w-full rounded-none bg-stone-900 text-xs uppercase tracking-[0.18em] hover:bg-stone-700"
+          disabled={cartItems.length === 0}
+          onClick={() => openCheckout(cartItems)}
+        >
+          Checkout
+        </Button>
       </aside>
     </>
   );
@@ -722,13 +830,26 @@ const AppContent = ({
   menuOpen,
   setMenuOpen,
   loadCatalog,
+  sellerWorkspaceMode,
+  setSellerWorkspaceMode,
+  openCheckout,
+  customerSession,
+  customerProfile,
+  setCustomerSession,
+  setCustomerProfile,
+  customerOrders,
+  checkoutOpen,
+  setCheckoutOpen,
+  checkoutItems,
+  handleOrderPlaced,
 }) => {
   const location = useLocation();
   const isSellerRoute = location.pathname.startsWith("/seller");
+  const hidePublicChrome = sellerWorkspaceMode && isSellerRoute;
 
   return (
     <div className="app-shell min-h-screen bg-[#fdfcfb]" data-testid="app-shell">
-      <SiteHeader cartCount={cartItems.length} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+      <SiteHeader cartCount={cartItems.length} menuOpen={menuOpen} setMenuOpen={setMenuOpen} sellerWorkspaceMode={hidePublicChrome} customerProfile={customerProfile} />
       <Routes>
         <Route
           path="/"
@@ -738,17 +859,34 @@ const AppContent = ({
               categories={categories}
               products={products}
               addToCart={addToCart}
+              openCheckout={openCheckout}
               submitNewsletter={submitNewsletter}
               newsletterState={newsletterState}
             />
           }
         />
-        <Route path="/shop" element={<ShopPage products={products} categories={categories} addToCart={addToCart} />} />
-        <Route path="/product/:slug" element={<ProductPage addToCart={addToCart} />} />
-        <Route path="/seller" element={<SellerPortal onCatalogRefresh={loadCatalog} />} />
+        <Route path="/shop" element={<ShopPage products={products} categories={categories} addToCart={addToCart} openCheckout={openCheckout} />} />
+        <Route path="/product/:slug" element={<ProductPage addToCart={addToCart} openCheckout={openCheckout} />} />
+        <Route path="/account" element={<CustomerAccountPage customerProfile={customerProfile} customerOrders={customerOrders} />} />
+        <Route path="/seller" element={<SellerAuthPortal onCatalogRefresh={loadCatalog} onSessionStateChange={setSellerWorkspaceMode} />} />
       </Routes>
-      {!isSellerRoute && <Footer brandInfo={brandInfo} />}
-      {!isSellerRoute && <CartPanel cartItems={cartItems} setCartItems={setCartItems} />}
+      {!hidePublicChrome && !isSellerRoute && <Footer brandInfo={brandInfo} />}
+      {!hidePublicChrome && !isSellerRoute && <CartPanel cartItems={cartItems} setCartItems={setCartItems} openCheckout={openCheckout} />}
+      {!hidePublicChrome && (
+        <CustomerCheckoutModal
+          open={checkoutOpen}
+          onClose={() => setCheckoutOpen(false)}
+          checkoutItems={checkoutItems}
+          customerSession={customerSession}
+          customerProfile={customerProfile}
+          onAuthSuccess={(sessionToken, profile) => {
+            setCustomerSession(sessionToken);
+            setCustomerProfile(profile);
+            window.localStorage.setItem(CUSTOMER_SESSION_STORAGE_KEY, sessionToken);
+          }}
+          onOrderPlaced={handleOrderPlaced}
+        />
+      )}
     </div>
   );
 };
@@ -760,6 +898,12 @@ function App() {
   const [cartItems, setCartItems] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [newsletterState, setNewsletterState] = useState({ message: "" });
+  const [sellerWorkspaceMode, setSellerWorkspaceMode] = useState(false);
+  const [customerSession, setCustomerSession] = useState("");
+  const [customerProfile, setCustomerProfile] = useState(null);
+  const [customerOrders, setCustomerOrders] = useState([]);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutItems, setCheckoutItems] = useState([]);
 
   useEffect(() => {
     const metaDescription = document.querySelector("meta[name='description']") || document.createElement("meta");
@@ -791,6 +935,33 @@ function App() {
   useEffect(() => {
     loadCatalog();
   }, [loadCatalog]);
+
+  useEffect(() => {
+    const restoreCustomerSession = async () => {
+      const storedSession = window.localStorage.getItem(CUSTOMER_SESSION_STORAGE_KEY);
+      if (!storedSession) {
+        return;
+      }
+
+      try {
+        const [profileResponse, ordersResponse] = await Promise.all([
+          axios.get(`${API}/customer/auth/me`, {
+            headers: { "X-Customer-Session": storedSession },
+          }),
+          axios.get(`${API}/customer/orders`, {
+            headers: { "X-Customer-Session": storedSession },
+          }),
+        ]);
+        setCustomerSession(storedSession);
+        setCustomerProfile(profileResponse.data);
+        setCustomerOrders(ordersResponse.data || []);
+      } catch (error) {
+        window.localStorage.removeItem(CUSTOMER_SESSION_STORAGE_KEY);
+      }
+    };
+
+    restoreCustomerSession();
+  }, []);
 
   const addToCart = (product, options) => {
     const { size, color } = options;
@@ -851,6 +1022,45 @@ function App() {
     }
   };
 
+  const openCheckout = (items) => {
+    setCheckoutItems(items);
+    setCheckoutOpen(true);
+  };
+
+  const handleOrderPlaced = async () => {
+    const storedSession = window.localStorage.getItem(CUSTOMER_SESSION_STORAGE_KEY);
+    if (storedSession) {
+      try {
+        const [profileResponse, ordersResponse] = await Promise.all([
+          axios.get(`${API}/customer/auth/me`, {
+            headers: { "X-Customer-Session": storedSession },
+          }),
+          axios.get(`${API}/customer/orders`, {
+            headers: { "X-Customer-Session": storedSession },
+          }),
+        ]);
+        setCustomerSession(storedSession);
+        setCustomerProfile(profileResponse.data);
+        setCustomerOrders(ordersResponse.data || []);
+      } catch (error) {
+        window.localStorage.removeItem(CUSTOMER_SESSION_STORAGE_KEY);
+      }
+    }
+
+    setCartItems((prev) =>
+      prev.filter(
+        (item) =>
+          !checkoutItems.some(
+            (checkoutItem) =>
+              checkoutItem.slug === item.slug &&
+              checkoutItem.size === item.size &&
+              checkoutItem.color === item.color,
+          ),
+      ),
+    );
+    setCheckoutOpen(false);
+  };
+
   if (!brandInfo) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-100 text-stone-700" data-testid="global-loading-state">
@@ -873,6 +1083,18 @@ function App() {
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
         loadCatalog={loadCatalog}
+        sellerWorkspaceMode={sellerWorkspaceMode}
+        setSellerWorkspaceMode={setSellerWorkspaceMode}
+        openCheckout={openCheckout}
+        customerSession={customerSession}
+        customerProfile={customerProfile}
+        setCustomerSession={setCustomerSession}
+        setCustomerProfile={setCustomerProfile}
+        customerOrders={customerOrders}
+        checkoutOpen={checkoutOpen}
+        setCheckoutOpen={setCheckoutOpen}
+        checkoutItems={checkoutItems}
+        handleOrderPlaced={handleOrderPlaced}
       />
     </BrowserRouter>
   );
